@@ -30,6 +30,7 @@
 
     //Set up the force layout
     var force = d3.layout.force()
+        .gravity(.01)
         .charge(-120)
         .linkDistance(80)
         .size([width, height]);
@@ -45,53 +46,60 @@
         .attr("viewBox", "0 0 " + width + " " + height )
         .attr("preserveAspectRatio", "xMidYMid meet")
         //.call(d3.behavior.zoom().on("zoom", redraw));
+        .call(d3.behavior.zoom().scaleExtent([0.1, 2]).on("zoom", zoom))
+        .append("g");
 
     //Read the data from the mis element
     //var mis = document.getElementById('mis').innerHTML;
     //graph = JSON.parse(mis);
 
-    d3.json("${pageContext.request.contextPath}/data/hash_tags_d3.json", function(error, graph) {
+    d3.json("${pageContext.request.contextPath}/data/hash_tags_d3_v2.json", function(error, graph) {
         if (error) throw error;
 
         //Creates the graph data structure out of the json data
         force
-    	.nodes(graph.nodes)
-    	.links(graph.links)
-    	.start();
+            .nodes(graph.nodes)
+            .links(graph.links)
+            .start();
 
         //Create all the line svgs but without locations yet
         var link = svg.selectAll(".link")
-    	.data(graph.links)
-    	.enter().append("line")
-    	.attr("class", "link")
-    	.style("stroke-width", function(d) { return Math.sqrt(d.value); });
+            .data(graph.links)
+            .enter().append("line")
+            .attr("class", "link")
+            .style("stroke-width", function(d) { return Math.sqrt(d.value); });
 
         //Do the same with the circles for the nodes - no
         //Changed
         var node = svg.selectAll(".node")
-    	.data(graph.nodes)
-    	.enter().append("g")
-    	.attr("class", "node")
-    	.attr("r", 5)
-    	.style("fill", function(d) { return color(d.group); })
-    	.call(force.drag);
+            .data(graph.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .attr("r", 5)
+            .style("fill", function(d) { return color(d.group); })
+            .call(force.drag);
 
         node.append("circle")
-    	.attr("r", 8)
-    	.style("fill", function(d) { return color(d.group); });
+            .attr("r", function(d) { if(d.radius) { return d.radius } else { return 8 } })
+            .style("fill", function(d) { return color(d.group); });
 
         node.append("text")
-    	  .attr("dx", 10)
-    	  .attr("dy", ".35em")
-    	  .text(function(d) { return d.name });
+            .attr("dx", 10)
+            .attr("dy", ".35em")
+            .attr("fill", "black") // color of the text
+            .text(function(d) { return d.name });
         //End changed
 
         //Now we are giving the SVGs co-ordinates - the force layout is generating the co-ordinates which this code is using to update the attributes of the SVG elements
         force.on("tick", function() {
-    	link.attr("x1", function(d) { return d.source.x; })
-    	    .attr("y1", function(d) { return d.source.y; })
-    	    .attr("x2", function(d) { return d.target.x; })
-    	    .attr("y2", function(d) { return d.target.y; });
+            // define the centre node of the graph
+            graph.nodes[1].x = width / 2;
+            graph.nodes[1].y = height / 2;
+            
+            link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
 
     	//Changed
     	d3.selectAll("circle").attr("cx", function(d) { return d.x; })
@@ -101,6 +109,11 @@
     	//End Changed
         });
     });
+    
+    function zoom() {
+        var zoom = d3.event;
+        svg.attr("transform", "translate(" + zoom.translate + ")scale(" + zoom.scale + ")");
+    }
     </script>
 </body>
 </html>
